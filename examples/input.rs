@@ -6,7 +6,7 @@ fn main() {
         .interact_text()
         .unwrap();
 
-    println!("Hello {}!", input);
+    //println!("Hello {}!", input);
 
     let mail: String = Input::with_theme(&ColorfulTheme::default())
         .with_prompt("Your email")

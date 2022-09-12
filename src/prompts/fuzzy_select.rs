@@ -179,6 +179,7 @@ impl FuzzySelect<'_> {
         // Variable used to determine if we need to scroll through the list.
         let mut starting_row = 0;
 
+        render.write_line()?;
         term.hide_cursor()?;
 
         loop {
@@ -193,7 +194,7 @@ impl FuzzySelect<'_> {
                 .filter_map(|(item, score)| score.map(|s| (item, s)))
                 .collect::<Vec<_>>();
 
-            // Renders all matching items, from best match to worst.
+            // Renders all matching items, from best match to worst
             filtered_list.sort_unstable_by(|(_, s1), (_, s2)| s2.cmp(s1));
 
             for (idx, (item, _)) in filtered_list

@@ -20,6 +20,7 @@ impl Default for MyCompletion {
             options: vec![
                 "orange".to_string(),
                 "apple".to_string(),
+                "apppppple".to_string(),
                 "banana".to_string(),
             ],
         }
@@ -28,7 +29,7 @@ impl Default for MyCompletion {
 
 impl Completion for MyCompletion {
     /// Simple completion implementation based on substring
-    fn get(&self, input: &str) -> Option<String> {
+    fn get(&self, input: &str) -> Option<CompletionResult> {
         let matches = self
             .options
             .iter()
@@ -36,7 +37,10 @@ impl Completion for MyCompletion {
             .collect::<Vec<_>>();
 
         if matches.len() == 1 {
-            Some(matches[0].to_string())
+            Some(CompletionResult {
+                completion: matches[0].to_string(),
+                redraw_prompt: false,
+            })
         } else {
             None
         }

@@ -753,6 +753,10 @@ impl<'a> TermThemeRenderer<'a> {
         self.term.write_str(&buf)
     }
 
+    pub fn write_line(&mut self) -> io::Result<()> {
+        self.term.write_line("")
+    }
+
     fn write_formatted_line<
         F: FnOnce(&mut TermThemeRenderer, &mut dyn fmt::Write) -> fmt::Result,
     >(

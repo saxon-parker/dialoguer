@@ -21,7 +21,7 @@
 #![deny(clippy::all)]
 
 #[cfg(feature = "completion")]
-pub use completion::Completion;
+pub use completion::{Completion, CompletionResult};
 pub use console;
 #[cfg(feature = "editor")]
 pub use edit::Editor;

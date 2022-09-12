@@ -328,14 +328,23 @@ where
                         if let Some(completion) = &self.completion {
                             let input: String = chars.clone().into_iter().collect();
                             if let Some(x) = completion.get(&input) {
-                                term.clear_chars(chars.len())?;
+                                if x.redraw_prompt {
+                                    render.clear()?;
+                                    term.clear_chars(chars.len())?;
+                                    render.input_prompt(&self.prompt, None)?;
+                                    term.flush()?;
+                                } else {
+                                    term.clear_chars(chars.len())?;
+                                }
+
                                 chars.clear();
+
                                 position = 0;
-                                for ch in x.chars() {
+                                for ch in x.completion.chars() {
                                     chars.insert(position, ch);
                                     position += 1;
                                 }
-                                term.write_str(&x)?;
+                                term.write_str(&x.completion)?;
                                 term.flush()?;
                             }
                         }
