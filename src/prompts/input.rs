@@ -1,4 +1,4 @@
-use std::{fmt::Debug, io, iter, str::FromStr};
+use std::{cell::RefCell, fmt::Debug, io, iter, str::FromStr};
 
 #[cfg(feature = "completion")]
 use crate::completion::Completion;
@@ -251,18 +251,20 @@ where
     /// while [`interact`](#method.interact) allows virtually any character to be used e.g arrow keys.
     ///
     /// The dialog is rendered on stderr.
-    pub fn interact_text(&mut self) -> io::Result<T> {
-        self.interact_text_on(&Term::stderr())
+    pub fn interact_text(&mut self, render: &RefCell<TermThemeRenderer>) -> io::Result<T> {
+        self.interact_text_on(&Term::stderr(), render)
     }
 
     /// Like [`interact_text`](#method.interact_text) but allows a specific terminal to be set.
-    pub fn interact_text_on(&mut self, term: &Term) -> io::Result<T> {
-        let mut render = TermThemeRenderer::new(term, self.theme);
-
+    pub fn interact_text_on(
+        &mut self,
+        term: &Term,
+        render: &RefCell<TermThemeRenderer>,
+    ) -> io::Result<T> {
         loop {
             let default_string = self.default.as_ref().map(ToString::to_string);
 
-            render.input_prompt(
+            render.borrow_mut().input_prompt(
                 &self.prompt,
                 if self.show_default {
                     default_string.as_deref()
@@ -402,19 +404,21 @@ where
             let input = chars.iter().collect::<String>();
 
             term.clear_line()?;
-            render.clear()?;
+            render.borrow_mut().clear()?;
 
             if chars.is_empty() {
                 if let Some(ref default) = self.default {
                     if let Some(ref mut validator) = self.validator {
                         if let Some(err) = validator(default) {
-                            render.error(&err)?;
+                            render.borrow_mut().error(&err)?;
                             continue;
                         }
                     }
 
                     if self.report {
-                        render.input_prompt_selection(&self.prompt, &default.to_string())?;
+                        render
+                            .borrow_mut()
+                            .input_prompt_selection(&self.prompt, &default.to_string())?;
                     }
                     term.flush()?;
                     return Ok(default.clone());
@@ -427,7 +431,7 @@ where
                 Ok(value) => {
                     if let Some(ref mut validator) = self.validator {
                         if let Some(err) = validator(&value) {
-                            render.error(&err)?;
+                            render.borrow_mut().error(&err)?;
                             continue;
                         }
                     }
@@ -438,14 +442,16 @@ where
                     }
 
                     if self.report {
-                        render.input_prompt_selection(&self.prompt, &input)?;
+                        render
+                            .borrow_mut()
+                            .input_prompt_selection(&self.prompt, &input)?;
                     }
                     term.flush()?;
 
                     return Ok(value);
                 }
                 Err(err) => {
-                    render.error(&err.to_string())?;
+                    render.borrow_mut().error(&err.to_string())?;
                     continue;
                 }
             }

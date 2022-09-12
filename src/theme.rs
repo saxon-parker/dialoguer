@@ -708,7 +708,7 @@ impl Theme for ColorfulTheme {
 }
 
 /// Helper struct to conveniently render a theme of a term.
-pub(crate) struct TermThemeRenderer<'a> {
+pub struct TermThemeRenderer<'a> {
     term: &'a Term,
     theme: &'a dyn Theme,
     height: usize,
@@ -751,6 +751,10 @@ impl<'a> TermThemeRenderer<'a> {
         f(self, &mut buf).map_err(|err| io::Error::new(io::ErrorKind::Other, err))?;
         self.height += buf.chars().filter(|&x| x == '\n').count();
         self.term.write_str(&buf)
+    }
+
+    pub fn write_line(&mut self) -> io::Result<()> {
+        self.term.write_line("")
     }
 
     fn write_formatted_line<
@@ -952,6 +956,16 @@ impl<'a> TermThemeRenderer<'a> {
         self.term
             .clear_last_lines(self.height + self.prompt_height)?;
         self.height = 0;
+        Ok(())
+    }
+
+    pub fn clear_last_lines(&mut self, n: usize) -> io::Result<()> {
+        self.term.clear_last_lines(n)?;
+        if n < self.height {
+            self.height = self.height - n;
+        } else {
+            self.height = 0;
+        }
         Ok(())
     }
 

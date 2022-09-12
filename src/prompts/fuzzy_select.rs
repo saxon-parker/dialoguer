@@ -1,7 +1,7 @@
 use crate::theme::{SimpleTheme, TermThemeRenderer, Theme};
 use console::{Key, Term};
 use fuzzy_matcher::FuzzyMatcher;
-use std::{io, ops::Rem};
+use std::{cell::RefCell, io, ops::Rem};
 
 /// Renders a selection menu that user can fuzzy match to reduce set.
 ///
@@ -126,8 +126,8 @@ impl FuzzySelect<'_> {
     /// Result contains `index` of selected item if user hit 'Enter'.
     /// This unlike [interact_opt](#method.interact_opt) does not allow to quit with 'Esc' or 'q'.
     #[inline]
-    pub fn interact(&self) -> io::Result<usize> {
-        self.interact_on(&Term::stderr())
+    pub fn interact(&self, render: &RefCell<TermThemeRenderer>) -> io::Result<usize> {
+        self.interact_on(&Term::stderr(), render)
     }
 
     /// Enables user interaction and returns the result.
@@ -136,29 +136,41 @@ impl FuzzySelect<'_> {
     /// The dialog is rendered on stderr.
     /// Result contains `Some(index)` if user hit 'Enter' or `None` if user cancelled with 'Esc' or 'q'.
     #[inline]
-    pub fn interact_opt(&self) -> io::Result<Option<usize>> {
-        self.interact_on_opt(&Term::stderr())
+    pub fn interact_opt(&self, render: &RefCell<TermThemeRenderer>) -> io::Result<Option<usize>> {
+        self.interact_on_opt(&Term::stderr(), render)
     }
 
     /// Like `interact` but allows a specific terminal to be set.
     #[inline]
-    pub fn interact_on(&self, term: &Term) -> io::Result<usize> {
-        self._interact_on(term, false)?
+    pub fn interact_on(
+        &self,
+        term: &Term,
+        render: &RefCell<TermThemeRenderer>,
+    ) -> io::Result<usize> {
+        self._interact_on(term, false, render)?
             .ok_or_else(|| io::Error::new(io::ErrorKind::Other, "Quit not allowed in this case"))
     }
 
     /// Like `interact` but allows a specific terminal to be set.
     #[inline]
-    pub fn interact_on_opt(&self, term: &Term) -> io::Result<Option<usize>> {
-        self._interact_on(term, true)
+    pub fn interact_on_opt(
+        &self,
+        term: &Term,
+        render: &RefCell<TermThemeRenderer>,
+    ) -> io::Result<Option<usize>> {
+        self._interact_on(term, true, render)
     }
 
     /// Like `interact` but allows a specific terminal to be set.
-    fn _interact_on(&self, term: &Term, allow_quit: bool) -> io::Result<Option<usize>> {
+    fn _interact_on(
+        &self,
+        term: &Term,
+        allow_quit: bool,
+        render: &RefCell<TermThemeRenderer>,
+    ) -> io::Result<Option<usize>> {
         let mut position = 0;
         let mut search_term = String::new();
 
-        let mut render = TermThemeRenderer::new(term, self.theme);
         let mut sel = self.default;
 
         let mut size_vec = Vec::new();
@@ -179,11 +191,22 @@ impl FuzzySelect<'_> {
         // Variable used to determine if we need to scroll through the list.
         let mut starting_row = 0;
 
+        render.borrow_mut().write_line()?;
+        //term.flush()?;
         term.hide_cursor()?;
 
+        //        let mut first_loop = true;
         loop {
-            render.clear()?;
-            render.fuzzy_select_prompt(self.prompt.as_str(), &search_term, position)?;
+            // if first_loop {
+            //     first_loop = false;
+            // } else {
+            //     render.borrow_mut().clear_last_lines(self.items.len())?;
+            // }
+            render.borrow_mut().fuzzy_select_prompt(
+                self.prompt.as_str(),
+                &search_term,
+                position,
+            )?;
 
             // Maps all items to a tuple of item and its match score.
             let mut filtered_list = self
@@ -202,7 +225,7 @@ impl FuzzySelect<'_> {
                 .skip(starting_row)
                 .take(visible_term_rows)
             {
-                render.fuzzy_select_prompt_item(
+                render.borrow_mut().fuzzy_select_prompt_item(
                     item,
                     idx == sel,
                     self.highlight_matches,
@@ -215,7 +238,7 @@ impl FuzzySelect<'_> {
             match term.read_key()? {
                 Key::Escape if allow_quit => {
                     if self.clear {
-                        render.clear()?;
+                        render.borrow_mut().clear()?;
                         term.flush()?;
                     }
                     term.show_cursor()?;
@@ -259,11 +282,12 @@ impl FuzzySelect<'_> {
                 }
                 Key::Enter if !filtered_list.is_empty() => {
                     if self.clear {
-                        render.clear()?;
+                        render.borrow_mut().clear()?;
                     }
 
                     if self.report {
                         render
+                            .borrow_mut()
                             .input_prompt_selection(self.prompt.as_str(), filtered_list[sel].0)?;
                     }
 
@@ -290,7 +314,7 @@ impl FuzzySelect<'_> {
                 _ => {}
             }
 
-            render.clear_preserve_prompt(&size_vec)?;
+            render.borrow_mut().clear_preserve_prompt(&size_vec)?;
         }
     }
 }
