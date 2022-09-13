@@ -323,6 +323,16 @@ where
                         position += 1;
                         term.flush()?;
                     }
+                    Key::Home if position > 0 => {
+                        term.move_cursor_left(position)?;
+                        position = 0;
+                        term.flush()?;
+                    }
+                    Key::End if position < chars.len() => {
+                        term.move_cursor_right(chars.len() - position)?;
+                        position = chars.len();
+                        term.flush()?;
+                    }
                     #[cfg(feature = "completion")]
                     Key::ArrowRight | Key::Tab => {
                         if let Some(completion) = &self.completion {
